@@ -65,17 +65,53 @@ class PhotosViewController: UICollectionViewController {
     
     func getNextBatch(){
         for item in self.count...self.count + batchSize{
-            self.startDownload(url: self.photoURL[item], index: item)
+            self.startDownload(url: self.photoURL[item], index: item, onSuccess: ({
+               //self.checkImageSize(url: self.photoURL[item])
+            }))
         }
+        
     }
+    
     
     func getFirstBatch(){
         for item in 0...self.count{
-            self.startDownload(url: self.photoURL[item], index: item)
+            self.startDownload(url: self.photoURL[item], index: item, onSuccess:({
+                DispatchQueue.main.async(execute: {
+                    self.collectionView?.reloadData()
+                    self.slideShow()
+                    self.getNextBatch()
+                })
+            })
+            )
         }
     }
     
-    func startDownload(url:String,index:Int){
+    func checkImageSize(url:String){
+        //check for image size
+        if let image = (AppSettings.sharedInstance.profileGalleryimagecache.object(forKey: url as AnyObject) as? UIImage){
+            let screenWidth = self.view.frame.width
+            let screenHeight = self.view.frame.height
+            let width = screenWidth - 20
+            let height = (screenHeight - 70)/3
+
+            let imageRatio = image.size.width / image.size.height;
+            let viewRatio = width/height
+            
+            if(imageRatio - 0.5 < viewRatio)
+            {
+                let index = self.photoURL.index(of: url)
+                self.photoURL.remove(at: index!)
+                self.count += 1
+            }
+            
+        }else{
+            //image is not downloaded
+            
+        }
+        
+    }
+    
+    func startDownload(url:String,index:Int,onSuccess:(()->Void)?){
         if let _ = pendingDownloads.downloadsInProgress[index] {
             return
         }
@@ -84,15 +120,8 @@ class PhotosViewController: UICollectionViewController {
             if downloader.isCancelled {
                 return
             }
-            DispatchQueue.main.async(execute: {
-                if self.count == self.batchSize{
-                    self.collectionView?.reloadData()
-                    self.slideShow()
-                    self.getNextBatch()
-                }else{
-                    
-                }
-            })
+            onSuccess!()
+            
         }
         pendingDownloads.downloadsInProgress[index] = downloader
         pendingDownloads.downloadQueue.addOperation(downloader)
