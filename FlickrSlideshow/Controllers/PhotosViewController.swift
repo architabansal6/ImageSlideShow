@@ -52,11 +52,12 @@ class PhotosViewController: UICollectionViewController {
     
     func slideShow(){
         timer.invalidate()
-        timer = Timer.scheduledTimer(timeInterval: 10, target: self, selector: #selector(self.showNextBatch), userInfo: nil, repeats: true)
+        timer = Timer.scheduledTimer(timeInterval: 10, target: self, selector: #selector(self.shouldShowNextBatch), userInfo: nil, repeats: true)
     }
     
     func showNextBatch(){
         //increment count
+        
         self.count = self.count + batchSize
         self.collectionView?.reloadData()
         self.collectionView?.scrollToItem(at: IndexPath(row:self.count - 1,section:0), at: .bottom, animated: true)
@@ -64,9 +65,9 @@ class PhotosViewController: UICollectionViewController {
     }
     
     func getNextBatch(){
-        for item in self.count...self.count + batchSize{
+        for item in self.count...self.count + batchSize - 1{
             self.startDownload(url: self.photoURL[item], index: item, onSuccess: ({
-               //self.checkImageSize(url: self.photoURL[item])
+               self.checkImageSize(url: self.photoURL[item])
             }))
         }
         
@@ -74,7 +75,7 @@ class PhotosViewController: UICollectionViewController {
     
     
     func getFirstBatch(){
-        for item in 0...self.count{
+        for item in 0...self.count - 1{
             self.startDownload(url: self.photoURL[item], index: item, onSuccess:({
                 DispatchQueue.main.async(execute: {
                     self.collectionView?.reloadData()
@@ -97,18 +98,44 @@ class PhotosViewController: UICollectionViewController {
             let imageRatio = image.size.width / image.size.height;
             let viewRatio = width/height
             
-            if(imageRatio - 0.5 < viewRatio)
+            if(imageRatio - 0.5 < viewRatio || imageRatio - 0.5 > viewRatio)
             {
                 let index = self.photoURL.index(of: url)
                 self.photoURL.remove(at: index!)
-                self.count += 1
+                self.pendingDownloads.downloadsInProgress.removeValue(forKey: index!)
+                if self.count+batchSize-1 >= 0{
+                    self.startDownload(url: self.photoURL[self.count+batchSize-1], index: self.count+batchSize-1, onSuccess: {
+                        DispatchQueue.main.async(execute: {
+                            self.collectionView?.reloadData()
+                        })
+                        
+                    })
+                }
+                
             }
             
         }else{
             //image is not downloaded
+        
             
         }
         
+    }
+    
+    func shouldShowNextBatch(){
+        for item in stride(from: self.count, to: self.count-3, by: -1){
+            if let _ = (AppSettings.sharedInstance.profileGalleryimagecache.object(forKey: self.photoURL[item] as AnyObject) as? UIImage){
+                //downloaded
+                timer.invalidate()
+                timer = Timer.scheduledTimer(timeInterval: 10, target: self, selector: #selector(self.shouldShowNextBatch), userInfo: nil, repeats: true)
+                self.showNextBatch()
+            }else{
+                //not downloaded
+                self.timer.invalidate()
+                //on suucess-
+                timer = Timer.scheduledTimer(timeInterval: 2, target: self, selector: #selector(self.shouldShowNextBatch), userInfo: nil, repeats: true)
+            }
+        }
     }
     
     func startDownload(url:String,index:Int,onSuccess:(()->Void)?){
