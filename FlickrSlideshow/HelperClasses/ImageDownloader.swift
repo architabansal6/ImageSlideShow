@@ -37,7 +37,7 @@ class ImageDownloader: Operation {
         let imageData = NSData.init(contentsOf: URL.init(string: self.imageUrl)!) //make sure your image in this url does exist, otherwise unwrap in a if
         if(imageData == nil)
         {
-            AppSettings.sharedInstance.profileGalleryimagecache.setObject(UIImage(named: "default")!, forKey:imageUrl as AnyObject)
+            //AppSettings.sharedInstance.profileGalleryimagecache.setObject(UIImage(named: "default")!, forKey:imageUrl as AnyObject)
         }
         else
         {

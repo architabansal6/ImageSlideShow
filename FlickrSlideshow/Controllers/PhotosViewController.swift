@@ -65,12 +65,16 @@ class PhotosViewController: UICollectionViewController {
     }
     
     func getNextBatch(){
-        for item in self.count...self.count + batchSize - 1{
-            self.startDownload(url: self.photoURL[item], index: item, onSuccess: ({
-               self.checkImageSize(url: self.photoURL[item])
-            }))
+       // let endCount = ((self.count + self.batchSize - 1)< self.photoURL.count)) ? self.count + self.batchSize - 1 : self.photoURL.count
+        if self.count + batchSize - 1 < self.photoURL.count {
+            for item in self.count...self.count + batchSize - 1{
+                self.startDownload(url: self.photoURL[item], index: item, onSuccess: ({
+                    self.checkImageSize(url: self.photoURL[item])
+                }))
+            }
+        }else{
+            timer.invalidate()
         }
-        
     }
     
     
@@ -98,7 +102,7 @@ class PhotosViewController: UICollectionViewController {
             let imageRatio = image.size.width / image.size.height;
             let viewRatio = width/height
             
-            if(imageRatio - 0.5 < viewRatio || imageRatio - 0.5 > viewRatio)
+            if(imageRatio - 0.5 < viewRatio || imageRatio + 0.5 > viewRatio)
             {
                 let index = self.photoURL.index(of: url)
                 self.photoURL.remove(at: index!)
@@ -114,27 +118,29 @@ class PhotosViewController: UICollectionViewController {
                 
             }
             
-        }else{
-            //image is not downloaded
-        
-            
         }
-        
     }
     
     func shouldShowNextBatch(){
-        for item in stride(from: self.count, to: self.count-3, by: -1){
+        var allDone = true
+        for item in stride(from: self.count-1, to: self.count - batchSize - 1, by: -1){
             if let _ = (AppSettings.sharedInstance.profileGalleryimagecache.object(forKey: self.photoURL[item] as AnyObject) as? UIImage){
-                //downloaded
-                timer.invalidate()
-                timer = Timer.scheduledTimer(timeInterval: 10, target: self, selector: #selector(self.shouldShowNextBatch), userInfo: nil, repeats: true)
-                self.showNextBatch()
+//                //downloaded
+                continue
             }else{
-                //not downloaded
-                self.timer.invalidate()
-                //on suucess-
-                timer = Timer.scheduledTimer(timeInterval: 2, target: self, selector: #selector(self.shouldShowNextBatch), userInfo: nil, repeats: true)
+//            //not downloaded
+                allDone = false
+                break
             }
+        }
+        if allDone{
+            timer.invalidate()
+            timer = Timer.scheduledTimer(timeInterval: 10, target: self, selector: #selector(self.shouldShowNextBatch), userInfo: nil, repeats: true)
+            self.showNextBatch()
+        }else{
+            self.timer.invalidate()
+            //on suucess-
+            timer = Timer.scheduledTimer(timeInterval: 3, target: self, selector: #selector(self.shouldShowNextBatch), userInfo: nil, repeats: true)
         }
     }
     
